@@ -1,0 +1,7 @@
+IBM is the sole author of this project and all optimized code in this repository
+is Copyright IBM.  Thus, all pull requests will be either ignored, or closed
+without reading them.  Bug reports, however, are welcome by opening an issue or
+emailing the author of the code.
+
+All commits to this project contain tags similar to those used by Linux.  All
+files contain an SPDX header for the BSD-2-Clause license.
