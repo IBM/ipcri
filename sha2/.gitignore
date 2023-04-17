@@ -1,0 +1,6 @@
+*_pycache_*
+bin/
+gen/
+cross/
+openssl/
+compile_commands.json
