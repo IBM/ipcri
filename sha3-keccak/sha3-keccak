@@ -1,0 +1,15 @@
+#!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Copyright 2024-2025 IBM Corp. All rights reserved
+# Authored by Nimet Ozkan <nozkan@linux.ibm.com>
+#
+
+if [[ "$1" == "-S" ]]; then
+    ./singlebuffer/keccak "${@:2}"
+elif [[ "$1" == "-M" ]]; then
+    ./multibuffer/keccak "${@:2}"
+else
+    echo "Usage: ./sha3-keccak -S <alg-name> <"input"> or ./sha3-keccak -M <alg-name> <"input1"> <"input2">" 
+    exit 1
+fi
