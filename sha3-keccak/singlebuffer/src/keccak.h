@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
- * Copyright 2024-2025 IBM Corp. All rights reserved
+ * Copyright 2024- IBM Corp. All rights reserved
  * Authored by Nimet Ozkan <nozkan@linux.ibm.com>
  */
 
@@ -38,6 +38,9 @@ void shake256_call_progressive(u32 bits, u8 *entry, int entrysz, u8 *puff);
 
 void shake256_call_configure(keccak_ppc64_t *kcx);
 void shake128_call_configure(keccak_ppc64_t *kcx);
+
+void xoru8(u64 nwords, u64 *vstate, u8 *entry, u64 untouched);
+void xoru64(u64 nwords, u64 *vstate, u8 *entry);
 
 void shake_process(keccak_ppc64_t *kcx, uint8_t *buf, uint64_t buffsz, uint8_t *puff, uint64_t puffsz);
 void keccak_shake_complete_absorb(keccak_ppc64_t *kcx);

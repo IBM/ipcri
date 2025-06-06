@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
- * Copyright 2024-2025 IBM Corp. All rights reserved
+ * Copyright 2024- IBM Corp. All rights reserved
  * Authored by Nimet Ozkan <nozkan@linux.ibm.com>
  */
 
@@ -178,49 +178,49 @@ void shake256_call_mult(u32 puffsz, u8 *entry1, u8 *entry2, int entrysz1, int en
 
 /* Progressive Shakes */
 
-void keccak_absorb_load_mult_states(keccak_ppc64_mult *kcx, u32 inx, u64 **stptr1, u64 **stptr2)
-{
-	*stptr1 = &kcx->state[0][inx];
-	*stptr2 = &kcx->state[1][inx];
-}
-
 void keccak_shake_absorb_mult(keccak_ppc64_mult *kcx, uint8_t *entry1, uint8_t *entry2, u32 entrysz)
 {
 	TRY_PASS(kcx->sponge._block_rate <= 0 || (kcx->sponge._block_rate % 8 == 0));
 
-	u64 i, j;
-	u32 offset;
-	u32 inx, jnx;
-	u64 untouched;
-	u64 *stptr1;
-	u64 *stptr2;
-	u32 sponge_block_rate;
+	u64 i;
+	u64 end;
+	u8 *st1, *st2;
+	u64 *stptr1, *stptr2;
+	u64 nwords;
+	u32 cont;
 
-	sponge_block_rate = kcx->sponge._block_rate;
-	i = 0;
-	while (i < entrysz) {
-		untouched = get_min_bsize((sponge_block_rate - kcx->sponge._threshold), entrysz - i);
-		for (j = 0; j < untouched / 8; j++) {
-			inx = (kcx->sponge._threshold + j * 8) / 8;
-			jnx = j * 8;
+	end = kcx->sponge._block_rate;
+	st1 = (u8 *) kcx->state[0];
+	st2 = (u8 *) kcx->state[1];
 
-			keccak_absorb_load_mult_states(kcx, inx, &stptr1, &stptr2);
-			*stptr1 ^= *((u64 *) &entry1[jnx]);
-			*stptr2 ^= *((u64 *) &entry2[jnx]);
+	while (entrysz > 0) {
+		i = 0;
+		u64 untouched = get_min_bsize((kcx->sponge._block_rate - kcx->sponge._threshold), entrysz);
+		nwords = untouched / 8;
+
+		u64 *vstate1 = (u64 *) &st1[kcx->sponge._threshold];
+		u64 *vstate2 = (u64 *) &st2[kcx->sponge._threshold];
+
+		for (; i < nwords; i++) {
+			stptr1 = &vstate1[i];
+			*stptr1 ^= *((u64 *) &entry1[i * 8]);
+
+			stptr2 = &vstate2[i];
+			*stptr2 ^= *((u64 *) &entry2[i * 8]);
 		}
-		for (j = untouched / 8 * 8; j < untouched; j++) {
-			offset = (kcx->sponge._threshold + j) % 8;
-			offset *= 8;
-			inx = (kcx->sponge._threshold + j) / 8;
 
-			keccak_absorb_load_mult_states(kcx, inx, &stptr1, &stptr2);
-			*stptr1 ^= ((u64) entry1[i] << (offset));
-			*stptr2 ^= ((u64) entry2[i] << (offset));
+		cont = nwords * 8;
+		for (i = cont; i < untouched; i++) {
+			((u8 *) vstate1)[i] ^= entry1[i];
+			((u8 *) vstate2)[i] ^= entry2[i];
 		}
+
 		kcx->sponge._threshold += untouched;
-		i += untouched;
+		entry1 += untouched;
+		entry2 += untouched;
+		entrysz -= untouched;
 
-		if (kcx->sponge._threshold == sponge_block_rate) {
+		if (kcx->sponge._threshold == end) {
 			keccakf_1600_mult(kcx->state[0], kcx->state[1]);
 			kcx->sponge._threshold = 0;
 		}

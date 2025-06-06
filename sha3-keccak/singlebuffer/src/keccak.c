@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
- * Copyright 2024-2025 IBM Corp. All rights reserved
+ * Copyright 2024- IBM Corp. All rights reserved
  * Authored by Nimet Ozkan <nozkan@linux.ibm.com>
  */
 
@@ -168,36 +168,49 @@ void sha3_call(u32 bits, u8 *entry, int entrysz, u8 *puff)
 
 /*Progressive Shakes*/
 
-void keccak_shake_absorb(keccak_ppc64_t *kcx, u8 *entry, u64 entrysz)
+void xoru64(u64 nwords, u64 *vstate, u8 *entry)
 {
-	TRY_PASS((kcx->sponge._block_rate <= 0) || (kcx->sponge._block_rate % 8 == 0));
-
-	u64 i;
-	u64 sponge_block_rate;
-	u8 untouched;
 	u64 *stptr;
-	u32 offset;
+	u32 i;
+	for (i = 0; i < nwords; i++) {
+		stptr = &vstate[i];
+		*stptr ^= *((u64 *) &entry[i * 8]);
+	}
+}
 
-	sponge_block_rate = kcx->sponge._block_rate;
+void xoru8(u64 nwords, u64 *vstate, u8 *entry, u64 untouched)
+{
+	u32 i;
+	u32 cont;
+	cont = nwords * 8;
+	for (i = cont; i < untouched; i++) {
+		((u8 *) vstate)[i] ^= entry[i];
+	}
+}
+
+void keccak_shake_absorb(keccak_ppc64_t *kcx, u8 *entry, size_t entrysz)
+{
+	u64 end;
+	u64 untouched;
+	u8 *sponge;
+	u64 nwords;
+
+	end = kcx->sponge._block_rate;
+	sponge = (u8 *) kcx->state;
 
 	while (entrysz > 0) {
 		untouched = get_min_bsize((kcx->sponge._block_rate - kcx->sponge._threshold), entrysz);
+		nwords = untouched / 8;
+		u64 *vstate = __builtin_assume_aligned((u64 *) (sponge + kcx->sponge._threshold), 8);
 
-		for (i = 0; i < untouched / 8; i++) {
-			stptr = &kcx->state[(kcx->sponge._threshold + i * 8) / 8];
-			*stptr ^= *((u64 *) &entry[i * 8]);
-		}
-		for (i = untouched / 8 * 8; i < untouched; i++) {
-			stptr = &kcx->state[(kcx->sponge._threshold + i) / 8];
-			offset = (kcx->sponge._threshold + i) % 8;
-			*stptr ^= ((u64) entry[i] << (offset * 8));
-		}
+		xoru64(nwords, vstate, entry);
+		xoru8(nwords, vstate, entry, untouched);
 
 		kcx->sponge._threshold += untouched;
 		entry += untouched;
 		entrysz -= untouched;
 
-		if (kcx->sponge._threshold == sponge_block_rate) {
+		if (kcx->sponge._threshold == end) {
 			keccakf_1600(kcx->state);
 			kcx->sponge._threshold = 0;
 		}
