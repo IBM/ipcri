@@ -23,6 +23,11 @@ $(warning $(CC) appears to be building for $(ARCH), consider setting CROSS to a 
 ENDIAN=LITTLE
 endif
 
+# Determine compiler support for newer instructions
+ifeq ($(COMPILER_FEATURES),)
+COMPILER_FEATURES:=$(shell ../future/compiler_support.sh 2>/dev/null)
+endif
+
 OPENSSL_PATH ?= openssl
 # Arbitrarily check for the ppc-xlate file, since it will be needed anyway
 OSSL_ENABLED = $(shell test -f $(OPENSSL_PATH)/crypto/perlasm/ppc-xlate.pl && echo 1)
@@ -54,7 +59,7 @@ benches: $(patsubst bin/%,bin/bench/%,$(P8_BINS))
 # Apply C preprocessor to "pure" assembly
 gen/%.s: asm/%.S
 	@mkdir -p gen
-	cpp -I. -D$(ENDIAN) -o $@ $<
+	cpp -I. -I../future -D$(ENDIAN) -DCOMPILER_FEATURES=$(COMPILER_FEATURES) -o $@ $<
 
 ### OpenSSL Perl Hacks
 ifneq ($(OSSL_ENABLED),)
